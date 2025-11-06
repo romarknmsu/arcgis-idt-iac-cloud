@@ -57,9 +57,9 @@ variable "key_pair_name" {
 }
 
 variable "allowed_cidr_blocks" {
-  description = "CIDR blocks allowed to access the infrastructure"
+  description = "CIDR blocks allowed to access the infrastructure. WARNING: Default allows all IPs - restrict this in production!"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = ["0.0.0.0/0"]  # WARNING: Allows all IPs - change to your organization's CIDR blocks for production
 }
 
 variable "enable_linux" {

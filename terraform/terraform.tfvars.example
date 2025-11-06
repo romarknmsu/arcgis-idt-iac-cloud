@@ -20,4 +20,9 @@ enable_windows = true
 enable_eks     = true
 
 # Network configuration
-allowed_cidr_blocks = ["0.0.0.0/0"]  # Restrict this in production!
+# SECURITY WARNING: Restrict these CIDR blocks to your organization's network!
+# Examples:
+#   Corporate network: ["10.0.0.0/8", "172.16.0.0/12"]
+#   Specific office: ["203.0.113.0/24"]
+#   VPN only: ["192.168.1.0/24"]
+allowed_cidr_blocks = ["0.0.0.0/0"]  # WARNING: Allows all IPs - change for production!
