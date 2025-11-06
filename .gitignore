@@ -31,6 +31,7 @@ Thumbs.db
 *.crt
 group_vars/*/vault.yml
 host_vars/*/vault.yml
+group_vars/*/custom_vars.yml
 
 # Temporary files
 *.tmp
