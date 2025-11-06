@@ -1,0 +1,18 @@
+---
+# Global variables for all hosts
+# These can be overridden in host-specific or group-specific vars
+
+# Common ArcGIS Enterprise settings
+arcgis_version: "11.3"
+
+# System requirements (can be overridden per host)
+min_ram_gb: 8
+min_disk_space_gb: 10
+
+# Ansible connection settings
+# For production, use Ansible Vault to encrypt sensitive data
+# Run: ansible-vault create group_vars/vault.yml
+
+# Example vault variables (uncomment and encrypt with ansible-vault):
+# windows_admin_password: "YourSecurePassword"
+# linux_root_password: "YourSecurePassword"

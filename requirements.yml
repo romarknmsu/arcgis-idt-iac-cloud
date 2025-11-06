@@ -1,0 +1,20 @@
+---
+# Ansible Collections required for ArcGIS Enterprise deployment
+# Install with: ansible-galaxy collection install -r requirements.yml
+
+collections:
+  # Core Windows management
+  - name: ansible.windows
+    version: ">=2.0.0"
+  
+  # Community Windows collection (includes win_firewall_rule)
+  - name: community.windows
+    version: ">=2.0.0"
+  
+  # Core POSIX utilities for Linux
+  - name: ansible.posix
+    version: ">=1.5.0"
+  
+  # Community general collection (includes UFW, timezone, zypper)
+  - name: community.general
+    version: ">=8.0.0"

@@ -1,0 +1,37 @@
+---
+# Playbook to configure ArcGIS Enterprise prerequisites on Linux servers
+# Usage: ansible-playbook -i inventory/linux.yml configure_linux_prerequisites.yml
+
+- name: Configure ArcGIS Enterprise Prerequisites on Linux
+  hosts: linux
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - role: arcgis_prerequisites_linux
+
+  post_tasks:
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+          ===================================================================
+          ArcGIS Enterprise Linux prerequisites configuration completed!
+          ===================================================================
+          
+          Next Steps:
+          1. Verify all prerequisites are installed correctly
+          2. Download ArcGIS Enterprise installation files
+          3. Transfer installation files to {{ arcgis_install_dir }}
+          4. Run ArcGIS Enterprise installer as {{ arcgis_user }} user
+          
+          Important Notes:
+          - System limits configured for {{ arcgis_user }} user
+          - Kernel parameters have been tuned for ArcGIS
+          - Firewall rules have been configured
+          - SELinux has been disabled (RHEL/CentOS)
+          
+          Verify configuration:
+          - Check limits: su - {{ arcgis_user }} -c 'ulimit -a'
+          - Check kernel params: sysctl -a | grep -E '(vm.max_map_count|vm.swappiness|net.ipv4.ip_local_port_range)'
+          
+          ===================================================================

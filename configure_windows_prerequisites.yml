@@ -1,0 +1,31 @@
+---
+# Playbook to configure ArcGIS Enterprise prerequisites on Windows servers
+# Usage: ansible-playbook -i inventory/windows.yml configure_windows_prerequisites.yml
+
+- name: Configure ArcGIS Enterprise Prerequisites on Windows
+  hosts: windows
+  gather_facts: yes
+
+  roles:
+    - role: arcgis_prerequisites_windows
+
+  post_tasks:
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+          ===================================================================
+          ArcGIS Enterprise Windows prerequisites configuration completed!
+          ===================================================================
+          
+          Next Steps:
+          1. Verify all prerequisites are installed correctly
+          2. Download ArcGIS Enterprise installation files
+          3. Run ArcGIS Enterprise installer
+          4. Configure ArcGIS Enterprise components
+          
+          Important Notes:
+          - System may have been rebooted if new software was installed
+          - Verify IIS is running: Get-Service W3SVC
+          - Check firewall rules: Get-NetFirewallRule | Where-Object {$_.DisplayName -like '*ArcGIS*'}
+          
+          ===================================================================

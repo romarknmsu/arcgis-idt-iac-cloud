@@ -1,0 +1,101 @@
+---
+# Default variables for ArcGIS Linux prerequisites
+
+# System packages required for ArcGIS Enterprise on RHEL/CentOS
+rhel_packages:
+  - openssl
+  - glibc
+  - libXrender
+  - libXext
+  - libX11
+  - libXtst
+  - libXi
+  - freetype
+  - fontconfig
+  - gettext
+  - dos2unix
+  - python3
+  - python3-pip
+
+# System packages required for ArcGIS Enterprise on Ubuntu
+ubuntu_packages:
+  - openssl
+  - libc6
+  - libxrender1
+  - libxext6
+  - libx11-6
+  - libxtst6
+  - libxi6
+  - libfreetype6
+  - fontconfig
+  - gettext
+  - dos2unix
+  - python3
+  - python3-pip
+
+# System packages required for ArcGIS Enterprise on SUSE
+suse_packages:
+  - openssl
+  - glibc
+  - libXrender1
+  - libXext6
+  - libX11-6
+  - libXtst6
+  - libXi6
+  - freetype2
+  - fontconfig
+  - gettext-runtime
+  - dos2unix
+  - python3
+  - python3-pip
+
+# ArcGIS user and group
+arcgis_user: "arcgis"
+arcgis_group: "arcgis"
+arcgis_user_home: "/home/{{ arcgis_user }}"
+arcgis_uid: 1500
+arcgis_gid: 1500
+
+# System limits for ArcGIS user
+arcgis_limits:
+  - domain: "{{ arcgis_user }}"
+    limit_type: soft
+    limit_item: nofile
+    value: 65536
+  - domain: "{{ arcgis_user }}"
+    limit_type: hard
+    limit_item: nofile
+    value: 65536
+  - domain: "{{ arcgis_user }}"
+    limit_type: soft
+    limit_item: nproc
+    value: 25059
+  - domain: "{{ arcgis_user }}"
+    limit_type: hard
+    limit_item: nproc
+    value: 25059
+
+# Kernel parameters
+kernel_parameters:
+  - name: vm.max_map_count
+    value: 262144
+  - name: vm.swappiness
+    value: 1
+  - name: net.ipv4.ip_local_port_range
+    value: "1024 65535"
+
+# Firewall ports for ArcGIS Enterprise
+arcgis_firewall_ports:
+  - { port: 6080, protocol: tcp, description: "ArcGIS Server HTTP" }
+  - { port: 6443, protocol: tcp, description: "ArcGIS Server HTTPS" }
+  - { port: 7080, protocol: tcp, description: "Portal HTTP" }
+  - { port: 7443, protocol: tcp, description: "Portal HTTPS" }
+  - { port: 2443, protocol: tcp, description: "ArcGIS Data Store" }
+  - { port: 9876, protocol: tcp, description: "ArcGIS Data Store Internal" }
+
+# Installation directory
+arcgis_install_dir: "/opt/arcgis"
+
+# System requirements
+min_ram_gb: 8
+min_disk_space_gb: 10
