@@ -1,0 +1,276 @@
+name: Deploy ArcGIS Enterprise Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      platform:
+        description: 'Target platform(s) to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - linux
+          - windows
+          - kubernetes
+      action:
+        description: 'Terraform action to perform'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+        default: plan
+      terraform_version:
+        description: 'Terraform version'
+        required: false
+        default: '1.6.0'
+        type: string
+
+env:
+  TF_VERSION: ${{ inputs.terraform_version }}
+  ENVIRONMENT: ${{ inputs.environment }}
+
+jobs:
+  terraform-lint:
+    name: Terraform Lint and Validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: |
+          terraform fmt -check -recursive terraform/
+        continue-on-error: true
+
+      - name: Validate Linux Configuration
+        if: inputs.platform == 'all' || inputs.platform == 'linux'
+        run: |
+          cd terraform/linux
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate Windows Configuration
+        if: inputs.platform == 'all' || inputs.platform == 'windows'
+        run: |
+          cd terraform/windows
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate Kubernetes Configuration
+        if: inputs.platform == 'all' || inputs.platform == 'kubernetes'
+        run: |
+          cd terraform/kubernetes
+          terraform init -backend=false
+          terraform validate
+
+  deploy-linux:
+    name: Deploy Linux Infrastructure
+    runs-on: ubuntu-latest
+    needs: terraform-lint
+    if: inputs.platform == 'all' || inputs.platform == 'linux'
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Terraform Init - Linux
+        run: |
+          cd terraform/linux
+          terraform init
+
+      - name: Terraform Plan - Linux
+        if: inputs.action == 'plan' || inputs.action == 'apply'
+        run: |
+          cd terraform/linux
+          terraform plan -var="environment=${{ env.ENVIRONMENT }}" -out=tfplan
+
+      - name: Terraform Apply - Linux
+        if: inputs.action == 'apply'
+        run: |
+          cd terraform/linux
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy - Linux
+        if: inputs.action == 'destroy'
+        run: |
+          cd terraform/linux
+          terraform destroy -var="environment=${{ env.ENVIRONMENT }}" -auto-approve
+
+      - name: Upload Terraform State
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state-linux-${{ env.ENVIRONMENT }}
+          path: terraform/linux/terraform.tfstate
+          retention-days: 30
+
+  deploy-windows:
+    name: Deploy Windows Infrastructure
+    runs-on: ubuntu-latest
+    needs: terraform-lint
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Terraform Init - Windows
+        run: |
+          cd terraform/windows
+          terraform init
+
+      - name: Terraform Plan - Windows
+        if: inputs.action == 'plan' || inputs.action == 'apply'
+        run: |
+          cd terraform/windows
+          terraform plan -var="environment=${{ env.ENVIRONMENT }}" -out=tfplan
+
+      - name: Terraform Apply - Windows
+        if: inputs.action == 'apply'
+        run: |
+          cd terraform/windows
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy - Windows
+        if: inputs.action == 'destroy'
+        run: |
+          cd terraform/windows
+          terraform destroy -var="environment=${{ env.ENVIRONMENT }}" -auto-approve
+
+      - name: Upload Terraform State
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state-windows-${{ env.ENVIRONMENT }}
+          path: terraform/windows/terraform.tfstate
+          retention-days: 30
+
+  deploy-kubernetes:
+    name: Deploy Kubernetes Infrastructure
+    runs-on: ubuntu-latest
+    needs: terraform-lint
+    if: inputs.platform == 'all' || inputs.platform == 'kubernetes'
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Terraform Init - Kubernetes
+        run: |
+          cd terraform/kubernetes
+          terraform init
+
+      - name: Terraform Plan - Kubernetes
+        if: inputs.action == 'plan' || inputs.action == 'apply'
+        run: |
+          cd terraform/kubernetes
+          terraform plan -var="environment=${{ env.ENVIRONMENT }}" -out=tfplan
+
+      - name: Terraform Apply - Kubernetes
+        if: inputs.action == 'apply'
+        run: |
+          cd terraform/kubernetes
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy - Kubernetes
+        if: inputs.action == 'destroy'
+        run: |
+          cd terraform/kubernetes
+          terraform destroy -var="environment=${{ env.ENVIRONMENT }}" -auto-approve
+
+      - name: Upload Terraform State
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state-kubernetes-${{ env.ENVIRONMENT }}
+          path: terraform/kubernetes/terraform.tfstate
+          retention-days: 30
+
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [deploy-linux, deploy-windows, deploy-kubernetes]
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## ArcGIS Enterprise Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Platform:** ${{ inputs.platform }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Action:** ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Terraform Version:** ${{ inputs.terraform_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux: ${{ needs.deploy-linux.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows: ${{ needs.deploy-windows.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Kubernetes: ${{ needs.deploy-kubernetes.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
