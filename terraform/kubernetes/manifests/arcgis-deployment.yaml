@@ -1,0 +1,217 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arcgis-config
+  namespace: arcgis-enterprise
+data:
+  ARCGIS_ENVIRONMENT: "dev"
+  ARCGIS_LOG_LEVEL: "INFO"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: arcgis-portal-pvc
+  namespace: arcgis-enterprise
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: arcgis-storage
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: arcgis-server-pvc
+  namespace: arcgis-enterprise
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: arcgis-storage
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arcgis-portal
+  namespace: arcgis-enterprise
+  labels:
+    app: arcgis-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: arcgis-portal
+  template:
+    metadata:
+      labels:
+        app: arcgis-portal
+    spec:
+      containers:
+      - name: portal
+        image: esridocker/arcgis-portal:latest
+        ports:
+        - containerPort: 7443
+          name: https
+        - containerPort: 7080
+          name: http
+        env:
+        - name: ACCEPT_EULA
+          value: "yes"
+        envFrom:
+        - configMapRef:
+            name: arcgis-config
+        volumeMounts:
+        - name: portal-data
+          mountPath: /arcgis/portal
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "2"
+          limits:
+            memory: "16Gi"
+            cpu: "4"
+        livenessProbe:
+          httpGet:
+            path: /arcgis/portaladmin/healthCheck
+            port: 7443
+            scheme: HTTPS
+          initialDelaySeconds: 300
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /arcgis/portaladmin/healthCheck
+            port: 7443
+            scheme: HTTPS
+          initialDelaySeconds: 120
+          periodSeconds: 10
+      volumes:
+      - name: portal-data
+        persistentVolumeClaim:
+          claimName: arcgis-portal-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arcgis-portal-service
+  namespace: arcgis-enterprise
+spec:
+  type: LoadBalancer
+  selector:
+    app: arcgis-portal
+  ports:
+  - name: https
+    port: 7443
+    targetPort: 7443
+  - name: http
+    port: 7080
+    targetPort: 7080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arcgis-server
+  namespace: arcgis-enterprise
+  labels:
+    app: arcgis-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: arcgis-server
+  template:
+    metadata:
+      labels:
+        app: arcgis-server
+    spec:
+      containers:
+      - name: server
+        image: esridocker/arcgis-server:latest
+        ports:
+        - containerPort: 6443
+          name: https
+        - containerPort: 6080
+          name: http
+        env:
+        - name: ACCEPT_EULA
+          value: "yes"
+        envFrom:
+        - configMapRef:
+            name: arcgis-config
+        volumeMounts:
+        - name: server-data
+          mountPath: /arcgis/server
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "2"
+          limits:
+            memory: "16Gi"
+            cpu: "4"
+        livenessProbe:
+          httpGet:
+            path: /arcgis/rest/info/healthCheck
+            port: 6443
+            scheme: HTTPS
+          initialDelaySeconds: 300
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /arcgis/rest/info/healthCheck
+            port: 6443
+            scheme: HTTPS
+          initialDelaySeconds: 120
+          periodSeconds: 10
+      volumes:
+      - name: server-data
+        persistentVolumeClaim:
+          claimName: arcgis-server-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arcgis-server-service
+  namespace: arcgis-enterprise
+spec:
+  type: LoadBalancer
+  selector:
+    app: arcgis-server
+  ports:
+  - name: https
+    port: 6443
+    targetPort: 6443
+  - name: http
+    port: 6080
+    targetPort: 6080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: arcgis-ingress
+  namespace: arcgis-enterprise
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTPS
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /arcgis/home
+        pathType: Prefix
+        backend:
+          service:
+            name: arcgis-portal-service
+            port:
+              number: 7443
+      - path: /arcgis/rest
+        pathType: Prefix
+        backend:
+          service:
+            name: arcgis-server-service
+            port:
+              number: 6443
