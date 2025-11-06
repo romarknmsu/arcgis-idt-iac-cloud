@@ -158,6 +158,12 @@ Each platform has its own `variables.tf` file where you can customize:
 - Network configuration
 - Security settings
 
+**Important Security Note**: By default, `allowed_cidr_blocks` is set to `0.0.0.0/0` for ease of initial setup. For production deployments, **always restrict this to your specific IP ranges or networks**. Example:
+
+```hcl
+allowed_cidr_blocks = ["10.0.0.0/8", "203.0.113.0/24"]
+```
+
 ### Backend Configuration
 
 For production use, uncomment and configure the S3 backend in each `main.tf`:

@@ -234,7 +234,7 @@ resource "aws_lb" "arcgis_alb" {
 # Target Group for Portal
 resource "aws_lb_target_group" "portal_tg" {
   name     = "arcgis-${var.environment}-portal-tg"
-  port     = 6443
+  port     = 7443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.arcgis_vpc.id
 
@@ -260,7 +260,7 @@ resource "aws_lb_target_group_attachment" "portal_tga" {
   count            = var.portal_instance_count
   target_group_arn = aws_lb_target_group.portal_tg.arn
   target_id        = aws_instance.arcgis_portal[count.index].id
-  port             = 6443
+  port             = 7443
 }
 
 # Data source for available AZs

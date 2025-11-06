@@ -52,6 +52,8 @@ spec:
     spec:
       containers:
       - name: portal
+        # Note: Replace 'latest' with a specific version tag for production use
+        # Example: esridocker/arcgis-portal:11.1
         image: esridocker/arcgis-portal:latest
         ports:
         - containerPort: 7443
@@ -129,6 +131,8 @@ spec:
     spec:
       containers:
       - name: server
+        # Note: Replace 'latest' with a specific version tag for production use
+        # Example: esridocker/arcgis-server:11.1
         image: esridocker/arcgis-server:latest
         ports:
         - containerPort: 6443

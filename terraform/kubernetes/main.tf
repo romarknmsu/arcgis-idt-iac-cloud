@@ -362,7 +362,7 @@ resource "kubernetes_storage_class" "arcgis_storage" {
     name = "arcgis-storage"
   }
 
-  storage_provisioner = "kubernetes.io/aws-ebs"
+  storage_provisioner = "ebs.csi.aws.com"
   reclaim_policy      = "Retain"
   volume_binding_mode = "WaitForFirstConsumer"
 
