@@ -34,16 +34,36 @@ chmod 400 arcgis-enterprise-key.pem
 Organize your ArcGIS builds in S3:
 
 ```bash
+# Linux installers
 aws s3 cp ArcGIS_Server_Linux.tar.gz \
   s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
 
 aws s3 cp Portal_for_ArcGIS_Linux.tar.gz \
   s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
 
+aws s3 cp ArcGIS_DataStore_Linux.tar.gz \
+  s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp ArcGIS_Web_Adaptor_Linux.tar.gz \
+  s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp Mission_Server_Linux.tar.gz \
+  s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+# Windows installers
 aws s3 cp ArcGIS_Server_Windows.exe \
   s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
 
 aws s3 cp Portal_for_ArcGIS_Windows.exe \
+  s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp ArcGIS_DataStore_Windows.exe \
+  s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp ArcGIS_Web_Adaptor_Windows.exe \
+  s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp Mission_Server_Windows.exe \
   s3://your-arcgis-builds-bucket/arcgis-enterprise/11.2/
 ```
 

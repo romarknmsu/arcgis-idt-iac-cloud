@@ -10,6 +10,7 @@ This repository provides a complete CI/CD pipeline for deploying and tearing dow
 - **Windows EC2 instances** (Windows Server 2022)
 - **Amazon EKS** (Kubernetes) clusters
 - **Automated daily builds** from AWS S3
+- **Full ArcGIS Enterprise installation** including Portal, Server, Data Store, Web Adaptor, and Mission Server
 - **Infrastructure as Code** with Terraform
 - **Configuration Management** with Ansible
 - **CI/CD Pipeline** with GitHub Actions
@@ -196,8 +197,14 @@ s3://your-arcgis-bucket/
     └── 11.2/
         ├── ArcGIS_Server_Linux.tar.gz
         ├── Portal_for_ArcGIS_Linux.tar.gz
+        ├── ArcGIS_DataStore_Linux.tar.gz
+        ├── ArcGIS_Web_Adaptor_Linux.tar.gz
+        ├── Mission_Server_Linux.tar.gz
         ├── ArcGIS_Server_Windows.exe
-        └── Portal_for_ArcGIS_Windows.exe
+        ├── Portal_for_ArcGIS_Windows.exe
+        ├── ArcGIS_DataStore_Windows.exe
+        ├── ArcGIS_Web_Adaptor_Windows.exe
+        └── Mission_Server_Windows.exe
 ```
 
 ## Security Considerations

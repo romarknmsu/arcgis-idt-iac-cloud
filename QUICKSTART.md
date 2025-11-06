@@ -33,16 +33,36 @@ chmod 400 arcgis-key.pem
 Upload your daily builds to S3 in this structure:
 
 ```bash
+# Upload all ArcGIS Enterprise components
 aws s3 cp ArcGIS_Server_Linux.tar.gz \
   s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
 
 aws s3 cp Portal_for_ArcGIS_Linux.tar.gz \
   s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
 
+aws s3 cp ArcGIS_DataStore_Linux.tar.gz \
+  s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp ArcGIS_Web_Adaptor_Linux.tar.gz \
+  s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp Mission_Server_Linux.tar.gz \
+  s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+# Windows versions
 aws s3 cp ArcGIS_Server_Windows.exe \
   s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
 
 aws s3 cp Portal_for_ArcGIS_Windows.exe \
+  s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp ArcGIS_DataStore_Windows.exe \
+  s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp ArcGIS_Web_Adaptor_Windows.exe \
+  s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
+
+aws s3 cp Mission_Server_Windows.exe \
   s3://my-arcgis-builds-bucket/arcgis-enterprise/11.2/
 ```
 
@@ -111,13 +131,23 @@ Your daily build environment includes:
 ✅ **Linux EC2 Instance**
 - Amazon Linux 2
 - Java 11, Python, AWS CLI pre-installed
-- ArcGIS Server and Portal installers downloaded
+- Full ArcGIS Enterprise installation:
+  - Portal for ArcGIS
+  - ArcGIS Server
+  - ArcGIS Data Store
+  - Web Adaptor
+  - Mission Server
 - Self-signed SSL certificate
 
 ✅ **Windows EC2 Instance**
 - Windows Server 2022
 - .NET Framework, IIS, Visual C++ installed
-- ArcGIS Server and Portal installers downloaded
+- Full ArcGIS Enterprise installation:
+  - Portal for ArcGIS
+  - ArcGIS Server
+  - ArcGIS Data Store
+  - Web Adaptor
+  - Mission Server
 - Self-signed SSL certificate
 
 ✅ **EKS Cluster**
