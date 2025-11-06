@@ -3,7 +3,7 @@
 
 - name: Check Windows version
   ansible.windows.win_shell: |
-    (Get-WmiObject -Class Win32_OperatingSystem).Caption
+    (Get-CimInstance -ClassName Win32_OperatingSystem).Caption
   register: windows_version
   changed_when: false
 
@@ -43,6 +43,7 @@
 - name: Install .NET 8 Hosting Bundle
   ansible.windows.win_package:
     path: "{{ dotnet_download_url }}"
+    product_id: "{{ dotnet_product_id }}"
     arguments: "/install /quiet /norestart"
     state: present
   register: dotnet_install
