@@ -142,12 +142,24 @@
         path: /var/log/arcgis/install.log
         line: "{{ ansible_date_time.iso8601 }} - ArcGIS Server installed at {{ arcgis_server_install_dir }}"
 
+    - name: Check if ArcGIS Server service exists
+      stat:
+        path: /etc/systemd/system/arcgisserver.service
+      register: server_service_file
+
     - name: Start ArcGIS Server service
       systemd:
         name: arcgisserver
         state: started
         enabled: yes
-      ignore_errors: yes
+      when: server_service_file.stat.exists
+      register: server_service_result
+      failed_when: false
+
+    - name: Log Server service status
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Server service start {{ 'successful' if server_service_result.changed else 'skipped or failed - manual start required' }}"
   when: 
     - ansible_os_family == "RedHat" or ansible_os_family == "Debian"
     - install_server
@@ -171,12 +183,24 @@
         path: /var/log/arcgis/install.log
         line: "{{ ansible_date_time.iso8601 }} - Portal for ArcGIS installed at {{ arcgis_portal_install_dir }}"
 
+    - name: Check if Portal service exists
+      stat:
+        path: /etc/systemd/system/arcgisportal.service
+      register: portal_service_file
+
     - name: Start Portal service
       systemd:
         name: arcgisportal
         state: started
         enabled: yes
-      ignore_errors: yes
+      when: portal_service_file.stat.exists
+      register: portal_service_result
+      failed_when: false
+
+    - name: Log Portal service status
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - Portal service start {{ 'successful' if portal_service_result.changed else 'skipped or failed - manual start required' }}"
   when: 
     - ansible_os_family == "RedHat" or ansible_os_family == "Debian"
     - install_portal
@@ -214,7 +238,7 @@
         -d {{ arcgis_webadaptor_install_dir }}
       args:
         creates: "{{ arcgis_webadaptor_install_dir }}/java"
-      become_user: root
+      become_user: arcgis
       register: webadaptor_install
 
     - name: Log Web Adaptor installation
@@ -244,12 +268,24 @@
         path: /var/log/arcgis/install.log
         line: "{{ ansible_date_time.iso8601 }} - Mission Server installed at {{ arcgis_mission_server_install_dir }}"
 
+    - name: Check if Mission Server service exists
+      stat:
+        path: /etc/systemd/system/arcgismissionserver.service
+      register: mission_service_file
+
     - name: Start Mission Server service
       systemd:
         name: arcgismissionserver
         state: started
         enabled: yes
-      ignore_errors: yes
+      when: mission_service_file.stat.exists
+      register: mission_service_result
+      failed_when: false
+
+    - name: Log Mission Server service status
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - Mission Server service start {{ 'successful' if mission_service_result.changed else 'skipped or failed - manual start required' }}"
   when: 
     - ansible_os_family == "RedHat" or ansible_os_family == "Debian"
     - install_mission_server
@@ -319,7 +355,13 @@
         name: ArcGIS Server
         state: started
         start_mode: auto
-      ignore_errors: yes
+      register: server_service_win_result
+      failed_when: false
+
+    - name: Log Server service status
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Server service start {{ 'successful' if server_service_win_result.changed else 'skipped or failed - manual start required' }}"
   when: 
     - ansible_os_family == "Windows"
     - install_server
@@ -344,7 +386,13 @@
         name: Portal for ArcGIS
         state: started
         start_mode: auto
-      ignore_errors: yes
+      register: portal_service_win_result
+      failed_when: false
+
+    - name: Log Portal service status
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - Portal service start {{ 'successful' if portal_service_win_result.changed else 'skipped or failed - manual start required' }}"
   when: 
     - ansible_os_family == "Windows"
     - install_portal
@@ -405,7 +453,13 @@
         name: ArcGIS Mission Server
         state: started
         start_mode: auto
-      ignore_errors: yes
+      register: mission_service_win_result
+      failed_when: false
+
+    - name: Log Mission Server service status
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - Mission Server service start {{ 'successful' if mission_service_win_result.changed else 'skipped or failed - manual start required' }}"
   when: 
     - ansible_os_family == "Windows"
     - install_mission_server

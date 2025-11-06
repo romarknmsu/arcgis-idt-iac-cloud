@@ -21,7 +21,7 @@ arcgis_mission_server_install_dir_windows: "C:\\Program Files\\ArcGIS\\MissionSe
 
 # Installation credentials (should be overridden via secrets)
 arcgis_admin_username: "admin"
-arcgis_admin_password: "{{ lookup('env', 'ARCGIS_ADMIN_PASSWORD') | default('ChangeMe123!', true) }}"
+arcgis_admin_password: "{{ lookup('env', 'ARCGIS_ADMIN_PASSWORD') | default('ChangeThisDefaultPassword!987', true) }}"
 arcgis_service_account: "arcgis"
 
 # Component installation flags
