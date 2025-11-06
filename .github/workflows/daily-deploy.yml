@@ -27,10 +27,15 @@ env:
   TERRAFORM_VERSION: 1.6.0
   ANSIBLE_VERSION: 2.15.0
 
+permissions:
+  contents: read
+
 jobs:
   deploy-infrastructure:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       linux_ip: ${{ steps.terraform_output.outputs.linux_ip }}
       windows_ip: ${{ steps.terraform_output.outputs.windows_ip }}
@@ -103,6 +108,8 @@ jobs:
   configure-linux:
     name: Configure Linux Server
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: deploy-infrastructure
     if: needs.deploy-infrastructure.outputs.linux_ip != ''
     
@@ -165,6 +172,8 @@ jobs:
   configure-windows:
     name: Configure Windows Server
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: deploy-infrastructure
     if: needs.deploy-infrastructure.outputs.windows_ip != ''
     
@@ -217,6 +226,8 @@ jobs:
   configure-eks:
     name: Configure EKS Cluster
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: deploy-infrastructure
     if: needs.deploy-infrastructure.outputs.eks_cluster != ''
     
@@ -252,6 +263,8 @@ jobs:
   notify-completion:
     name: Notify Deployment Completion
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [deploy-infrastructure, configure-linux, configure-windows, configure-eks]
     if: always()
     

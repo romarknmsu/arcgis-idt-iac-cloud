@@ -15,10 +15,15 @@ env:
   AWS_REGION: us-east-1
   TERRAFORM_VERSION: 1.6.0
 
+permissions:
+  contents: read
+
 jobs:
   teardown:
     name: Teardown Infrastructure
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
