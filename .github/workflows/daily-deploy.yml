@@ -1,0 +1,280 @@
+name: Daily ArcGIS Enterprise Deployment
+
+on:
+  schedule:
+    # Runs every weekday at 6:00 AM UTC (adjust timezone as needed)
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      enable_linux:
+        description: 'Deploy Linux EC2'
+        required: false
+        default: 'true'
+        type: boolean
+      enable_windows:
+        description: 'Deploy Windows EC2'
+        required: false
+        default: 'true'
+        type: boolean
+      enable_eks:
+        description: 'Deploy EKS Cluster'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  TERRAFORM_VERSION: 1.6.0
+  ANSIBLE_VERSION: 2.15.0
+
+jobs:
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    outputs:
+      linux_ip: ${{ steps.terraform_output.outputs.linux_ip }}
+      windows_ip: ${{ steps.terraform_output.outputs.windows_ip }}
+      eks_cluster: ${{ steps.terraform_output.outputs.eks_cluster }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}" \
+            -backend-config="key=arcgis-enterprise/daily-build/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: |
+          terraform plan \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -var="environment=daily-build" \
+            -var="s3_bucket_name=${{ secrets.ARCGIS_S3_BUCKET }}" \
+            -var="key_pair_name=${{ secrets.AWS_KEY_PAIR_NAME }}" \
+            -var="enable_linux=${{ github.event.inputs.enable_linux || 'true' }}" \
+            -var="enable_windows=${{ github.event.inputs.enable_windows || 'true' }}" \
+            -var="enable_eks=${{ github.event.inputs.enable_eks || 'true' }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+
+      - name: Get Terraform Outputs
+        id: terraform_output
+        working-directory: ./terraform
+        run: |
+          echo "linux_ip=$(terraform output -raw linux_public_ip 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+          echo "windows_ip=$(terraform output -raw windows_public_ip 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+          echo "eks_cluster=$(terraform output -raw eks_cluster_name 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+
+      - name: Save deployment info
+        run: |
+          mkdir -p deployment-info
+          echo "Deployment Date: $(date)" > deployment-info/info.txt
+          echo "Linux IP: ${{ steps.terraform_output.outputs.linux_ip }}" >> deployment-info/info.txt
+          echo "Windows IP: ${{ steps.terraform_output.outputs.windows_ip }}" >> deployment-info/info.txt
+          echo "EKS Cluster: ${{ steps.terraform_output.outputs.eks_cluster }}" >> deployment-info/info.txt
+
+      - name: Upload deployment info
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-info
+          path: deployment-info/
+
+  configure-linux:
+    name: Configure Linux Server
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure
+    if: needs.deploy-infrastructure.outputs.linux_ip != ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible
+        run: |
+          pip install ansible==${{ env.ANSIBLE_VERSION }}
+          pip install boto3 botocore
+
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Wait for Linux instance to be ready
+        run: |
+          echo "Waiting for SSH to be available..."
+          for i in {1..30}; do
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ec2-user@${{ needs.deploy-infrastructure.outputs.linux_ip }} "echo 'SSH Ready'" 2>/dev/null; then
+              echo "SSH is ready!"
+              break
+            fi
+            echo "Attempt $i: SSH not ready yet, waiting..."
+            sleep 30
+          done
+
+      - name: Create dynamic inventory
+        working-directory: ./ansible
+        run: |
+          cat > inventories/hosts.yml <<EOF
+          all:
+            vars:
+              ansible_user: ec2-user
+              ansible_ssh_private_key_file: ~/.ssh/id_rsa
+              arcgis_version: "${{ secrets.ARCGIS_VERSION }}"
+              s3_bucket_name: "${{ secrets.ARCGIS_S3_BUCKET }}"
+            children:
+              linux_servers:
+                hosts:
+                  linux_server:
+                    ansible_host: ${{ needs.deploy-infrastructure.outputs.linux_ip }}
+          EOF
+
+      - name: Run Ansible playbook for Linux
+        working-directory: ./ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: False
+        run: |
+          ansible-playbook -i inventories/hosts.yml playbook-linux.yml -v
+
+  configure-windows:
+    name: Configure Windows Server
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure
+    if: needs.deploy-infrastructure.outputs.windows_ip != ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible with Windows support
+        run: |
+          pip install ansible==${{ env.ANSIBLE_VERSION }}
+          pip install pywinrm[credssp]
+          pip install boto3 botocore
+
+      - name: Wait for Windows instance to be ready
+        run: |
+          echo "Waiting for Windows instance to be ready..."
+          sleep 300  # Wait 5 minutes for Windows to initialize
+
+      - name: Create dynamic inventory
+        working-directory: ./ansible
+        run: |
+          cat > inventories/hosts.yml <<EOF
+          all:
+            vars:
+              arcgis_version: "${{ secrets.ARCGIS_VERSION }}"
+              s3_bucket_name: "${{ secrets.ARCGIS_S3_BUCKET }}"
+            children:
+              windows_servers:
+                hosts:
+                  windows_server:
+                    ansible_host: ${{ needs.deploy-infrastructure.outputs.windows_ip }}
+                    ansible_user: Administrator
+                    ansible_password: "${{ secrets.WINDOWS_ADMIN_PASSWORD }}"
+                    ansible_connection: winrm
+                    ansible_winrm_transport: basic
+                    ansible_winrm_server_cert_validation: ignore
+                    ansible_port: 5985
+          EOF
+
+      - name: Run Ansible playbook for Windows
+        working-directory: ./ansible
+        run: |
+          ansible-playbook -i inventories/hosts.yml playbook-windows.yml -v
+
+  configure-eks:
+    name: Configure EKS Cluster
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure
+    if: needs.deploy-infrastructure.outputs.eks_cluster != ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name ${{ needs.deploy-infrastructure.outputs.eks_cluster }} --region ${{ env.AWS_REGION }}
+
+      - name: Verify cluster access
+        run: |
+          kubectl get nodes
+          kubectl get pods --all-namespaces
+
+      - name: Deploy ArcGIS Enterprise on Kubernetes (placeholder)
+        run: |
+          echo "EKS cluster is ready for ArcGIS Enterprise deployment"
+          echo "Cluster Name: ${{ needs.deploy-infrastructure.outputs.eks_cluster }}"
+          # Add Helm charts or Kubernetes manifests for ArcGIS Enterprise here
+
+  notify-completion:
+    name: Notify Deployment Completion
+    runs-on: ubuntu-latest
+    needs: [deploy-infrastructure, configure-linux, configure-windows, configure-eks]
+    if: always()
+    
+    steps:
+      - name: Download deployment info
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-info
+
+      - name: Display deployment summary
+        run: |
+          echo "=== Daily Build Deployment Summary ==="
+          cat info.txt
+          echo "======================================"
+
+      - name: Deployment status
+        run: |
+          if [ "${{ needs.configure-linux.result }}" == "success" ] || \
+             [ "${{ needs.configure-windows.result }}" == "success" ] || \
+             [ "${{ needs.configure-eks.result }}" == "success" ]; then
+            echo "✅ Deployment completed successfully!"
+            exit 0
+          else
+            echo "❌ Deployment encountered issues"
+            exit 1
+          fi

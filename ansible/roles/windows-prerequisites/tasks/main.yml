@@ -1,0 +1,72 @@
+---
+- name: Install Windows features required for ArcGIS
+  win_feature:
+    name:
+      - NET-Framework-45-Core
+      - NET-Framework-45-Features
+      - Web-Server
+      - Web-WebServer
+      - Web-Common-Http
+      - Web-Default-Doc
+      - Web-Dir-Browsing
+      - Web-Http-Errors
+      - Web-Static-Content
+      - Web-Health
+      - Web-Http-Logging
+      - Web-Performance
+      - Web-Stat-Compression
+      - Web-Security
+      - Web-Filtering
+      - Web-Windows-Auth
+      - Web-App-Dev
+      - Web-Net-Ext45
+      - Web-Asp-Net45
+      - Web-ISAPI-Ext
+      - Web-ISAPI-Filter
+      - Web-Mgmt-Tools
+      - Web-Mgmt-Console
+    state: present
+  register: win_features
+
+- name: Reboot if required
+  win_reboot:
+    reboot_timeout: 600
+  when: win_features.reboot_required
+
+- name: Create ArcGIS directories
+  win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - C:\ArcGIS
+    - C:\ArcGIS\Installer
+    - C:\ArcGIS\Software
+    - C:\ArcGIS\Certificates
+    - C:\ArcGIS\Logs
+
+- name: Install Visual C++ Redistributable (required for ArcGIS)
+  win_chocolatey:
+    name:
+      - vcredist2015
+      - vcredist2017
+      - vcredist2019
+    state: present
+
+- name: Create arcgis user
+  win_user:
+    name: arcgis
+    password: "{{ arcgis_user_password | default('TempP@ssw0rd123!') }}"
+    state: present
+    groups:
+      - Administrators
+    password_never_expires: yes
+
+- name: Set ArcGIS directory permissions
+  win_acl:
+    path: C:\ArcGIS
+    user: arcgis
+    rights: FullControl
+    type: allow
+    state: present
+    inherit: ContainerInherit, ObjectInherit
+    propagation: None

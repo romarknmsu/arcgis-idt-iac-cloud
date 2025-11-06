@@ -1,0 +1,15 @@
+---
+- name: Configure Linux servers for ArcGIS Enterprise
+  hosts: linux_servers
+  become: yes
+  
+  roles:
+    - common
+    - linux-prerequisites
+    - certificates
+    - arcgis-install
+
+  tasks:
+    - name: Display completion message
+      debug:
+        msg: "Linux server configuration complete. ArcGIS Enterprise is ready for use."

@@ -1,0 +1,28 @@
+---
+- name: Update system packages
+  yum:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+- name: Install base packages
+  yum:
+    name:
+      - wget
+      - curl
+      - unzip
+      - git
+      - vim
+      - htop
+      - net-tools
+    state: present
+
+- name: Set timezone
+  timezone:
+    name: America/New_York
+
+- name: Configure NTP
+  systemd:
+    name: chronyd
+    state: started
+    enabled: yes

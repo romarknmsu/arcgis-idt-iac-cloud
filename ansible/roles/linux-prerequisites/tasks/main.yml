@@ -1,0 +1,67 @@
+---
+- name: Install Java (required for ArcGIS)
+  yum:
+    name:
+      - java-11-openjdk
+      - java-11-openjdk-devel
+    state: present
+
+- name: Install Python dependencies
+  pip:
+    name:
+      - boto3
+      - botocore
+    executable: pip3
+
+- name: Create ArcGIS directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/arcgis
+    - /opt/arcgis/installer
+    - /opt/arcgis/software
+    - /opt/arcgis/certificates
+    - /var/log/arcgis
+
+- name: Increase file limits for ArcGIS
+  pam_limits:
+    domain: '*'
+    limit_type: "{{ item.limit_type }}"
+    limit_item: "{{ item.limit_item }}"
+    value: "{{ item.value }}"
+  loop:
+    - { limit_type: 'soft', limit_item: 'nofile', value: '65536' }
+    - { limit_type: 'hard', limit_item: 'nofile', value: '65536' }
+    - { limit_type: 'soft', limit_item: 'nproc', value: '25059' }
+    - { limit_type: 'hard', limit_item: 'nproc', value: '25059' }
+
+- name: Configure kernel parameters for ArcGIS
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: 'vm.max_map_count', value: '262144' }
+    - { name: 'vm.swappiness', value: '1' }
+
+- name: Disable SELinux (ArcGIS requirement)
+  selinux:
+    state: disabled
+  when: ansible_selinux.status == "enabled"
+
+- name: Create arcgis user
+  user:
+    name: arcgis
+    comment: "ArcGIS Service Account"
+    shell: /bin/bash
+    create_home: yes
+
+- name: Set ownership of ArcGIS directories
+  file:
+    path: /opt/arcgis
+    owner: arcgis
+    group: arcgis
+    recurse: yes

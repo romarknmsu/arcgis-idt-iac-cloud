@@ -1,0 +1,6 @@
+---
+arcgis_s3_prefix: "arcgis-enterprise/{{ arcgis_version }}"
+arcgis_install_dir_linux: "/opt/arcgis/software"
+arcgis_install_dir_windows: "C:\\ArcGIS\\Software"
+arcgis_installer_dir_linux: "/opt/arcgis/installer"
+arcgis_installer_dir_windows: "C:\\ArcGIS\\Installer"
