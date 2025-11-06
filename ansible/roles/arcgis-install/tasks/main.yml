@@ -1,0 +1,492 @@
+---
+# ArcGIS Installation role - downloads and installs ArcGIS Enterprise from S3
+
+- name: Download ArcGIS installers from S3 (Linux)
+  block:
+    - name: List available installers in S3
+      command: >
+        aws s3 ls s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/ --recursive
+      register: s3_list
+      changed_when: false
+
+    - name: Download ArcGIS Server installer
+      command: >
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/ArcGIS_Server_Linux.tar.gz 
+        {{ arcgis_installer_dir_linux }}/ArcGIS_Server_Linux.tar.gz
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/ArcGIS_Server_Linux.tar.gz"
+      become_user: arcgis
+      when: install_server
+
+    - name: Download ArcGIS Portal installer
+      command: >
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/Portal_for_ArcGIS_Linux.tar.gz
+        {{ arcgis_installer_dir_linux }}/Portal_for_ArcGIS_Linux.tar.gz
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/Portal_for_ArcGIS_Linux.tar.gz"
+      become_user: arcgis
+      when: install_portal
+
+    - name: Download ArcGIS Data Store installer
+      command: >
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/ArcGIS_DataStore_Linux.tar.gz
+        {{ arcgis_installer_dir_linux }}/ArcGIS_DataStore_Linux.tar.gz
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/ArcGIS_DataStore_Linux.tar.gz"
+      become_user: arcgis
+      when: install_datastore
+
+    - name: Download ArcGIS Web Adaptor installer
+      command: >
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/ArcGIS_Web_Adaptor_Linux.tar.gz
+        {{ arcgis_installer_dir_linux }}/ArcGIS_Web_Adaptor_Linux.tar.gz
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/ArcGIS_Web_Adaptor_Linux.tar.gz"
+      become_user: arcgis
+      when: install_webadaptor
+
+    - name: Download Mission Server installer
+      command: >
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/Mission_Server_Linux.tar.gz
+        {{ arcgis_installer_dir_linux }}/Mission_Server_Linux.tar.gz
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/Mission_Server_Linux.tar.gz"
+      become_user: arcgis
+      when: install_mission_server
+
+    - name: Extract ArcGIS Server installer
+      unarchive:
+        src: "{{ arcgis_installer_dir_linux }}/ArcGIS_Server_Linux.tar.gz"
+        dest: "{{ arcgis_installer_dir_linux }}/"
+        remote_src: yes
+        owner: arcgis
+        group: arcgis
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/ArcGISServer"
+      when: install_server
+
+    - name: Extract Portal installer
+      unarchive:
+        src: "{{ arcgis_installer_dir_linux }}/Portal_for_ArcGIS_Linux.tar.gz"
+        dest: "{{ arcgis_installer_dir_linux }}/"
+        remote_src: yes
+        owner: arcgis
+        group: arcgis
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/PortalForArcGIS"
+      when: install_portal
+
+    - name: Extract Data Store installer
+      unarchive:
+        src: "{{ arcgis_installer_dir_linux }}/ArcGIS_DataStore_Linux.tar.gz"
+        dest: "{{ arcgis_installer_dir_linux }}/"
+        remote_src: yes
+        owner: arcgis
+        group: arcgis
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/ArcGISDataStore"
+      when: install_datastore
+
+    - name: Extract Web Adaptor installer
+      unarchive:
+        src: "{{ arcgis_installer_dir_linux }}/ArcGIS_Web_Adaptor_Linux.tar.gz"
+        dest: "{{ arcgis_installer_dir_linux }}/"
+        remote_src: yes
+        owner: arcgis
+        group: arcgis
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/WebAdaptor"
+      when: install_webadaptor
+
+    - name: Extract Mission Server installer
+      unarchive:
+        src: "{{ arcgis_installer_dir_linux }}/Mission_Server_Linux.tar.gz"
+        dest: "{{ arcgis_installer_dir_linux }}/"
+        remote_src: yes
+        owner: arcgis
+        group: arcgis
+      args:
+        creates: "{{ arcgis_installer_dir_linux }}/MissionServer"
+      when: install_mission_server
+
+    - name: Create installation log
+      file:
+        path: /var/log/arcgis/install.log
+        state: touch
+        owner: arcgis
+        group: arcgis
+
+    - name: Log download completion
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS installers downloaded from S3"
+        create: yes
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+
+# Install ArcGIS Server on Linux
+- name: Install ArcGIS Server (Linux)
+  block:
+    - name: Run ArcGIS Server silent installation
+      command: >
+        {{ arcgis_installer_dir_linux }}/ArcGISServer/Setup 
+        -m silent 
+        -l yes 
+        -d {{ arcgis_server_install_dir }}
+      args:
+        creates: "{{ arcgis_server_install_dir }}/startserver.sh"
+      become_user: arcgis
+      register: server_install
+
+    - name: Log Server installation
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Server installed at {{ arcgis_server_install_dir }}"
+
+    - name: Check if ArcGIS Server service exists
+      stat:
+        path: /etc/systemd/system/arcgisserver.service
+      register: server_service_file
+
+    - name: Start ArcGIS Server service
+      systemd:
+        name: arcgisserver
+        state: started
+        enabled: yes
+      when: server_service_file.stat.exists
+      register: server_service_result
+      failed_when: false
+
+    - name: Log Server service status
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Server service start {{ 'successful' if server_service_result.changed else 'skipped or failed - manual start required' }}"
+  when: 
+    - ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+    - install_server
+
+# Install Portal for ArcGIS on Linux
+- name: Install Portal for ArcGIS (Linux)
+  block:
+    - name: Run Portal silent installation
+      command: >
+        {{ arcgis_installer_dir_linux }}/PortalForArcGIS/Setup 
+        -m silent 
+        -l yes 
+        -d {{ arcgis_portal_install_dir }}
+      args:
+        creates: "{{ arcgis_portal_install_dir }}/startportal.sh"
+      become_user: arcgis
+      register: portal_install
+
+    - name: Log Portal installation
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - Portal for ArcGIS installed at {{ arcgis_portal_install_dir }}"
+
+    - name: Check if Portal service exists
+      stat:
+        path: /etc/systemd/system/arcgisportal.service
+      register: portal_service_file
+
+    - name: Start Portal service
+      systemd:
+        name: arcgisportal
+        state: started
+        enabled: yes
+      when: portal_service_file.stat.exists
+      register: portal_service_result
+      failed_when: false
+
+    - name: Log Portal service status
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - Portal service start {{ 'successful' if portal_service_result.changed else 'skipped or failed - manual start required' }}"
+  when: 
+    - ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+    - install_portal
+
+# Install ArcGIS Data Store on Linux
+- name: Install ArcGIS Data Store (Linux)
+  block:
+    - name: Run Data Store silent installation
+      command: >
+        {{ arcgis_installer_dir_linux }}/ArcGISDataStore/Setup 
+        -m silent 
+        -l yes 
+        -d {{ arcgis_datastore_install_dir }}
+      args:
+        creates: "{{ arcgis_datastore_install_dir }}/startdatastore.sh"
+      become_user: arcgis
+      register: datastore_install
+
+    - name: Log Data Store installation
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Data Store installed at {{ arcgis_datastore_install_dir }}"
+  when: 
+    - ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+    - install_datastore
+
+# Install Web Adaptor on Linux
+- name: Install ArcGIS Web Adaptor (Linux)
+  block:
+    - name: Run Web Adaptor silent installation
+      command: >
+        {{ arcgis_installer_dir_linux }}/WebAdaptor/Setup 
+        -m silent 
+        -l yes 
+        -d {{ arcgis_webadaptor_install_dir }}
+      args:
+        creates: "{{ arcgis_webadaptor_install_dir }}/java"
+      become_user: arcgis
+      register: webadaptor_install
+
+    - name: Log Web Adaptor installation
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Web Adaptor installed at {{ arcgis_webadaptor_install_dir }}"
+  when: 
+    - ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+    - install_webadaptor
+
+# Install Mission Server on Linux
+- name: Install Mission Server (Linux)
+  block:
+    - name: Run Mission Server silent installation
+      command: >
+        {{ arcgis_installer_dir_linux }}/MissionServer/Setup 
+        -m silent 
+        -l yes 
+        -d {{ arcgis_mission_server_install_dir }}
+      args:
+        creates: "{{ arcgis_mission_server_install_dir }}/startserver.sh"
+      become_user: arcgis
+      register: mission_install
+
+    - name: Log Mission Server installation
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - Mission Server installed at {{ arcgis_mission_server_install_dir }}"
+
+    - name: Check if Mission Server service exists
+      stat:
+        path: /etc/systemd/system/arcgismissionserver.service
+      register: mission_service_file
+
+    - name: Start Mission Server service
+      systemd:
+        name: arcgismissionserver
+        state: started
+        enabled: yes
+      when: mission_service_file.stat.exists
+      register: mission_service_result
+      failed_when: false
+
+    - name: Log Mission Server service status
+      lineinfile:
+        path: /var/log/arcgis/install.log
+        line: "{{ ansible_date_time.iso8601 }} - Mission Server service start {{ 'successful' if mission_service_result.changed else 'skipped or failed - manual start required' }}"
+  when: 
+    - ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+    - install_mission_server
+
+# Windows Installation
+- name: Download ArcGIS installers from S3 (Windows)
+  block:
+    - name: Download ArcGIS Server installer
+      win_shell: |
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/ArcGIS_Server_Windows.exe {{ arcgis_installer_dir_windows }}\ArcGIS_Server_Windows.exe
+      args:
+        creates: "{{ arcgis_installer_dir_windows }}\\ArcGIS_Server_Windows.exe"
+      when: install_server
+
+    - name: Download ArcGIS Portal installer
+      win_shell: |
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/Portal_for_ArcGIS_Windows.exe {{ arcgis_installer_dir_windows }}\Portal_for_ArcGIS_Windows.exe
+      args:
+        creates: "{{ arcgis_installer_dir_windows }}\\Portal_for_ArcGIS_Windows.exe"
+      when: install_portal
+
+    - name: Download ArcGIS Data Store installer
+      win_shell: |
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/ArcGIS_DataStore_Windows.exe {{ arcgis_installer_dir_windows }}\ArcGIS_DataStore_Windows.exe
+      args:
+        creates: "{{ arcgis_installer_dir_windows }}\\ArcGIS_DataStore_Windows.exe"
+      when: install_datastore
+
+    - name: Download Web Adaptor installer
+      win_shell: |
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/ArcGIS_Web_Adaptor_Windows.exe {{ arcgis_installer_dir_windows }}\ArcGIS_Web_Adaptor_Windows.exe
+      args:
+        creates: "{{ arcgis_installer_dir_windows }}\\ArcGIS_Web_Adaptor_Windows.exe"
+      when: install_webadaptor
+
+    - name: Download Mission Server installer
+      win_shell: |
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ arcgis_s3_prefix }}/Mission_Server_Windows.exe {{ arcgis_installer_dir_windows }}\Mission_Server_Windows.exe
+      args:
+        creates: "{{ arcgis_installer_dir_windows }}\\Mission_Server_Windows.exe"
+      when: install_mission_server
+
+    - name: Log download completion
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS installers downloaded from S3"
+        create: yes
+  when: ansible_os_family == "Windows"
+
+# Install ArcGIS Server on Windows
+- name: Install ArcGIS Server (Windows)
+  block:
+    - name: Run ArcGIS Server silent installation
+      win_package:
+        path: "{{ arcgis_installer_dir_windows }}\\ArcGIS_Server_Windows.exe"
+        arguments: /qn ACCEPTEULA=Yes INSTALLDIR="{{ arcgis_server_install_dir_windows }}" USER_NAME={{ arcgis_service_account }}
+        state: present
+      register: server_install_win
+
+    - name: Log Server installation
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Server installed"
+
+    - name: Start ArcGIS Server service
+      win_service:
+        name: ArcGIS Server
+        state: started
+        start_mode: auto
+      register: server_service_win_result
+      failed_when: false
+
+    - name: Log Server service status
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Server service start {{ 'successful' if server_service_win_result.changed else 'skipped or failed - manual start required' }}"
+  when: 
+    - ansible_os_family == "Windows"
+    - install_server
+
+# Install Portal for ArcGIS on Windows
+- name: Install Portal for ArcGIS (Windows)
+  block:
+    - name: Run Portal silent installation
+      win_package:
+        path: "{{ arcgis_installer_dir_windows }}\\Portal_for_ArcGIS_Windows.exe"
+        arguments: /qn ACCEPTEULA=Yes INSTALLDIR="{{ arcgis_portal_install_dir_windows }}" USER_NAME={{ arcgis_service_account }}
+        state: present
+      register: portal_install_win
+
+    - name: Log Portal installation
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - Portal for ArcGIS installed"
+
+    - name: Start Portal service
+      win_service:
+        name: Portal for ArcGIS
+        state: started
+        start_mode: auto
+      register: portal_service_win_result
+      failed_when: false
+
+    - name: Log Portal service status
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - Portal service start {{ 'successful' if portal_service_win_result.changed else 'skipped or failed - manual start required' }}"
+  when: 
+    - ansible_os_family == "Windows"
+    - install_portal
+
+# Install ArcGIS Data Store on Windows
+- name: Install ArcGIS Data Store (Windows)
+  block:
+    - name: Run Data Store silent installation
+      win_package:
+        path: "{{ arcgis_installer_dir_windows }}\\ArcGIS_DataStore_Windows.exe"
+        arguments: /qn ACCEPTEULA=Yes INSTALLDIR="{{ arcgis_datastore_install_dir_windows }}"
+        state: present
+      register: datastore_install_win
+
+    - name: Log Data Store installation
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Data Store installed"
+  when: 
+    - ansible_os_family == "Windows"
+    - install_datastore
+
+# Install Web Adaptor on Windows
+- name: Install ArcGIS Web Adaptor (Windows)
+  block:
+    - name: Run Web Adaptor silent installation
+      win_package:
+        path: "{{ arcgis_installer_dir_windows }}\\ArcGIS_Web_Adaptor_Windows.exe"
+        arguments: /qn ACCEPTEULA=Yes INSTALLDIR="{{ arcgis_webadaptor_install_dir_windows }}"
+        state: present
+      register: webadaptor_install_win
+
+    - name: Log Web Adaptor installation
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - ArcGIS Web Adaptor installed"
+  when: 
+    - ansible_os_family == "Windows"
+    - install_webadaptor
+
+# Install Mission Server on Windows
+- name: Install Mission Server (Windows)
+  block:
+    - name: Run Mission Server silent installation
+      win_package:
+        path: "{{ arcgis_installer_dir_windows }}\\Mission_Server_Windows.exe"
+        arguments: /qn ACCEPTEULA=Yes INSTALLDIR="{{ arcgis_mission_server_install_dir_windows }}" USER_NAME={{ arcgis_service_account }}
+        state: present
+      register: mission_install_win
+
+    - name: Log Mission Server installation
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - Mission Server installed"
+
+    - name: Start Mission Server service
+      win_service:
+        name: ArcGIS Mission Server
+        state: started
+        start_mode: auto
+      register: mission_service_win_result
+      failed_when: false
+
+    - name: Log Mission Server service status
+      win_lineinfile:
+        path: C:\ArcGIS\Logs\install.log
+        line: "{{ ansible_date_time.iso8601 }} - Mission Server service start {{ 'successful' if mission_service_win_result.changed else 'skipped or failed - manual start required' }}"
+  when: 
+    - ansible_os_family == "Windows"
+    - install_mission_server
+
+- name: Create installation complete marker
+  file:
+    path: "{{ arcgis_installer_dir_linux }}/installation_complete"
+    state: touch
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+
+- name: Create installation complete marker (Windows)
+  win_file:
+    path: "{{ arcgis_installer_dir_windows }}\\installation_complete"
+    state: touch
+  when: ansible_os_family == "Windows"
+
+- name: Display installation summary
+  debug:
+    msg: |
+      ArcGIS Enterprise installation complete!
+      Components installed:
+      - Portal for ArcGIS: {{ install_portal }}
+      - ArcGIS Server: {{ install_server }}
+      - ArcGIS Data Store: {{ install_datastore }}
+      - Web Adaptor: {{ install_webadaptor }}
+      - Mission Server: {{ install_mission_server }}
+      
+      Check logs at:
+      Linux: /var/log/arcgis/install.log
+      Windows: C:\ArcGIS\Logs\install.log

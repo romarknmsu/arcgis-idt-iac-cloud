@@ -1,0 +1,32 @@
+---
+arcgis_s3_prefix: "arcgis-enterprise/{{ arcgis_version }}"
+arcgis_install_dir_linux: "/opt/arcgis/software"
+arcgis_install_dir_windows: "C:\\ArcGIS\\Software"
+arcgis_installer_dir_linux: "/opt/arcgis/installer"
+arcgis_installer_dir_windows: "C:\\ArcGIS\\Installer"
+
+# ArcGIS installation settings
+arcgis_portal_install_dir: "/opt/arcgis/portal"
+arcgis_server_install_dir: "/opt/arcgis/server"
+arcgis_datastore_install_dir: "/opt/arcgis/datastore"
+arcgis_webadaptor_install_dir: "/opt/arcgis/webadaptor"
+arcgis_mission_server_install_dir: "/opt/arcgis/missionserver"
+
+# Windows installation directories
+arcgis_portal_install_dir_windows: "C:\\Program Files\\ArcGIS\\Portal"
+arcgis_server_install_dir_windows: "C:\\Program Files\\ArcGIS\\Server"
+arcgis_datastore_install_dir_windows: "C:\\Program Files\\ArcGIS\\DataStore"
+arcgis_webadaptor_install_dir_windows: "C:\\Program Files\\ArcGIS\\WebAdaptor"
+arcgis_mission_server_install_dir_windows: "C:\\Program Files\\ArcGIS\\MissionServer"
+
+# Installation credentials (should be overridden via secrets)
+arcgis_admin_username: "admin"
+arcgis_admin_password: "{{ lookup('env', 'ARCGIS_ADMIN_PASSWORD') | default('ChangeThisDefaultPassword!987', true) }}"
+arcgis_service_account: "arcgis"
+
+# Component installation flags
+install_portal: true
+install_server: true
+install_datastore: true
+install_webadaptor: true
+install_mission_server: true

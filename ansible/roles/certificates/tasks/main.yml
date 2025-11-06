@@ -1,0 +1,60 @@
+---
+# Certificates role - manages SSL certificates for ArcGIS Enterprise
+
+- name: Generate self-signed certificate for Linux
+  block:
+    - name: Install OpenSSL
+      package:
+        name: openssl
+        state: present
+
+    - name: Generate private key
+      openssl_privatekey:
+        path: /opt/arcgis/certificates/server.key
+        size: 2048
+
+    - name: Generate CSR
+      openssl_csr:
+        path: /opt/arcgis/certificates/server.csr
+        privatekey_path: /opt/arcgis/certificates/server.key
+        common_name: "{{ ansible_fqdn }}"
+        organization_name: "ArcGIS Enterprise"
+        country_name: US
+
+    - name: Generate self-signed certificate
+      openssl_certificate:
+        path: /opt/arcgis/certificates/server.crt
+        privatekey_path: /opt/arcgis/certificates/server.key
+        csr_path: /opt/arcgis/certificates/server.csr
+        provider: selfsigned
+
+    - name: Set certificate permissions
+      file:
+        path: "{{ item }}"
+        owner: arcgis
+        group: arcgis
+        mode: '0600'
+      loop:
+        - /opt/arcgis/certificates/server.key
+        - /opt/arcgis/certificates/server.crt
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+
+- name: Generate self-signed certificate for Windows
+  block:
+    - name: Create self-signed certificate
+      win_shell: |
+        $cert = New-SelfSignedCertificate -DnsName "{{ ansible_fqdn }}" `
+          -CertStoreLocation "cert:\LocalMachine\My" `
+          -NotAfter (Get-Date).AddYears(2) `
+          -KeyLength 2048 `
+          -KeyAlgorithm RSA `
+          -HashAlgorithm SHA256
+        
+        $pwd = ConvertTo-SecureString -String "TempPassword123!" -Force -AsPlainText
+        Export-PfxCertificate -Cert $cert -FilePath "C:\ArcGIS\Certificates\server.pfx" -Password $pwd
+        
+        $certBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
+        [System.IO.File]::WriteAllBytes("C:\ArcGIS\Certificates\server.cer", $certBytes)
+      args:
+        creates: C:\ArcGIS\Certificates\server.pfx
+  when: ansible_os_family == "Windows"

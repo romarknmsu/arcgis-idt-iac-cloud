@@ -1,0 +1,13 @@
+---
+- name: Configure Windows servers for ArcGIS Enterprise
+  hosts: windows_servers
+  
+  roles:
+    - windows-prerequisites
+    - certificates
+    - arcgis-install
+
+  tasks:
+    - name: Display completion message
+      debug:
+        msg: "Windows server configuration complete. ArcGIS Enterprise is ready for use."
