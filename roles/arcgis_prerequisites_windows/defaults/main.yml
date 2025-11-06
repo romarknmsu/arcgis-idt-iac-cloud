@@ -1,0 +1,63 @@
+---
+# Default variables for ArcGIS Windows prerequisites
+
+# Microsoft Visual C++ Redistributable
+vcredist_url: "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+vcredist_product_id: "{6BA9FB5E-4C90-41FC-9E3A-3F3D821DB1DB}"
+vcredist_version: "14.38.33130"
+
+# .NET 8 Framework
+dotnet_version: "8.0"
+dotnet_download_url: "https://download.visualstudio.microsoft.com/download/pr/6224f00f-08da-4e7f-85b1-00d42c2bb3d3/b775de636b91e023574a0bbc291f705a/dotnet-hosting-8.0.0-win.exe"
+dotnet_product_id: "{6A8E7E0C-2A58-4C8F-8C6E-6C5B8E6B8E6B}"
+
+# IIS Features
+iis_features:
+  - Web-Server
+  - Web-WebServer
+  - Web-Common-Http
+  - Web-Default-Doc
+  - Web-Dir-Browsing
+  - Web-Http-Errors
+  - Web-Static-Content
+  - Web-Health
+  - Web-Http-Logging
+  - Web-Performance
+  - Web-Stat-Compression
+  - Web-Security
+  - Web-Filtering
+  - Web-Basic-Auth
+  - Web-Windows-Auth
+  - Web-App-Dev
+  - Web-Net-Ext45
+  - Web-Asp-Net45
+  - Web-ISAPI-Ext
+  - Web-ISAPI-Filter
+  - Web-Mgmt-Tools
+  - Web-Mgmt-Console
+
+# Firewall rules for ArcGIS Enterprise
+arcgis_firewall_rules:
+  - name: "ArcGIS Server - 6080"
+    port: 6080
+    protocol: "TCP"
+    description: "ArcGIS Server HTTP"
+  - name: "ArcGIS Server - 6443"
+    port: 6443
+    protocol: "TCP"
+    description: "ArcGIS Server HTTPS"
+  - name: "Portal for ArcGIS - 7080"
+    port: 7080
+    protocol: "TCP"
+    description: "Portal HTTP"
+  - name: "Portal for ArcGIS - 7443"
+    port: 7443
+    protocol: "TCP"
+    description: "Portal HTTPS"
+
+# System requirements
+min_ram_gb: 8
+min_disk_space_gb: 10
+
+# Installation directory
+arcgis_install_dir: "C:\\Program Files\\ArcGIS"

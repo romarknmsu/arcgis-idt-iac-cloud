@@ -1,0 +1,37 @@
+---
+# Example: Custom variables for production environment
+# Copy this file and customize for your environment
+
+# ArcGIS version
+arcgis_version: "11.3"
+
+# System requirements (adjust based on your needs)
+min_ram_gb: 16  # Production servers typically need more RAM
+min_disk_space_gb: 100  # Ensure adequate space for data
+
+# Custom installation directory
+# arcgis_install_dir: "/data/arcgis"  # Linux
+# arcgis_install_dir: "D:\\ArcGIS"    # Windows
+
+# Linux-specific: Custom user/group IDs
+# arcgis_uid: 2000
+# arcgis_gid: 2000
+
+# Linux-specific: Kernel parameter overrides
+# kernel_parameters:
+#   - name: vm.max_map_count
+#     value: 524288  # Higher value for larger deployments
+#   - name: vm.swappiness
+#     value: 1
+#   - name: net.ipv4.ip_local_port_range
+#     value: "1024 65535"
+
+# Additional firewall ports (if needed)
+# arcgis_firewall_ports:
+#   - { port: 6080, protocol: tcp, description: "ArcGIS Server HTTP" }
+#   - { port: 6443, protocol: tcp, description: "ArcGIS Server HTTPS" }
+#   - { port: 7080, protocol: tcp, description: "Portal HTTP" }
+#   - { port: 7443, protocol: tcp, description: "Portal HTTPS" }
+#   - { port: 2443, protocol: tcp, description: "ArcGIS Data Store" }
+#   - { port: 9876, protocol: tcp, description: "ArcGIS Data Store Internal" }
+#   - { port: 9120, protocol: tcp, description: "Custom Application Port" }

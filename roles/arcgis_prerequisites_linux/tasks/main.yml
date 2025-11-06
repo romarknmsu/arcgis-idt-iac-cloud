@@ -1,0 +1,143 @@
+---
+# Main tasks for ArcGIS Linux prerequisites
+
+- name: Gather OS facts
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!min"
+      - distribution
+      - hardware
+
+- name: Display OS information
+  ansible.builtin.debug:
+    msg: "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+- name: Verify minimum RAM requirement
+  ansible.builtin.assert:
+    that:
+      - ansible_memtotal_mb >= (min_ram_gb * 1024)
+    fail_msg: "Minimum RAM requirement of {{ min_ram_gb }} GB not met. Current RAM: {{ ansible_memtotal_mb / 1024 }} GB"
+    success_msg: "RAM requirement met: {{ ansible_memtotal_mb / 1024 }} GB"
+
+- name: Check available disk space
+  ansible.builtin.shell: df -BG / | tail -1 | awk '{print $4}' | sed 's/G//'
+  register: disk_space
+  changed_when: false
+
+- name: Verify minimum disk space requirement
+  ansible.builtin.assert:
+    that:
+      - disk_space.stdout | int >= min_disk_space_gb
+    fail_msg: "Minimum disk space requirement of {{ min_disk_space_gb }} GB not met. Available: {{ disk_space.stdout }} GB"
+    success_msg: "Disk space requirement met: {{ disk_space.stdout }} GB available"
+
+- name: Install required packages on RHEL/CentOS
+  ansible.builtin.yum:
+    name: "{{ rhel_packages }}"
+    state: present
+  when: ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
+
+- name: Install required packages on Ubuntu
+  ansible.builtin.apt:
+    name: "{{ ubuntu_packages }}"
+    state: present
+    update_cache: yes
+  when: ansible_distribution == 'Ubuntu'
+
+- name: Install required packages on SUSE
+  community.general.zypper:
+    name: "{{ suse_packages }}"
+    state: present
+  when: ansible_distribution == 'SLES'
+
+- name: Create ArcGIS group
+  ansible.builtin.group:
+    name: "{{ arcgis_group }}"
+    gid: "{{ arcgis_gid }}"
+    state: present
+
+- name: Create ArcGIS user
+  ansible.builtin.user:
+    name: "{{ arcgis_user }}"
+    uid: "{{ arcgis_uid }}"
+    group: "{{ arcgis_group }}"
+    home: "{{ arcgis_user_home }}"
+    shell: /bin/bash
+    comment: "ArcGIS Enterprise Service Account"
+    state: present
+
+- name: Set system limits for ArcGIS user
+  community.general.pam_limits:
+    domain: "{{ item.domain }}"
+    limit_type: "{{ item.limit_type }}"
+    limit_item: "{{ item.limit_item }}"
+    value: "{{ item.value }}"
+  loop: "{{ arcgis_limits }}"
+
+- name: Configure kernel parameters
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop: "{{ kernel_parameters }}"
+
+- name: Create ArcGIS installation directory
+  ansible.builtin.file:
+    path: "{{ arcgis_install_dir }}"
+    state: directory
+    owner: "{{ arcgis_user }}"
+    group: "{{ arcgis_group }}"
+    mode: '0755'
+
+- name: Configure firewalld on RHEL/CentOS (if firewalld is active)
+  block:
+    - name: Check if firewalld is running
+      ansible.builtin.systemd:
+        name: firewalld
+      register: firewalld_status
+
+    - name: Open ArcGIS ports in firewalld
+      ansible.posix.firewalld:
+        port: "{{ item.port }}/{{ item.protocol }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop: "{{ arcgis_firewall_ports }}"
+      when: firewalld_status.status.ActiveState == "active"
+  when: ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
+
+- name: Configure UFW on Ubuntu (if ufw is active)
+  block:
+    - name: Check if UFW is enabled
+      ansible.builtin.shell: ufw status | grep -i "Status:" | awk '{print $2}'
+      register: ufw_status
+      changed_when: false
+      failed_when: false
+
+    - name: Open ArcGIS ports in UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.protocol }}"
+        comment: "{{ item.description }}"
+      loop: "{{ arcgis_firewall_ports }}"
+      when: ufw_status.stdout == "active"
+  when: ansible_distribution == 'Ubuntu'
+
+- name: Disable SELinux (RHEL/CentOS only)
+  ansible.posix.selinux:
+    state: disabled
+  when: ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
+  register: selinux_status
+
+- name: Set timezone to UTC
+  community.general.timezone:
+    name: UTC
+
+- name: Reboot if SELinux was changed
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    post_reboot_delay: 60
+  when: selinux_status is defined and selinux_status is changed

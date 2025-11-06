@@ -1,0 +1,35 @@
+---
+# Inventory file for Windows servers
+# Configure your Windows servers here
+
+all:
+  children:
+    windows:
+      hosts:
+        # Example Windows servers
+        # Uncomment and modify with your server details
+        
+        # arcgis-win-server1:
+        #   ansible_host: 192.168.1.100
+        #   ansible_user: Administrator
+        #   ansible_password: "{{ windows_admin_password }}"
+        #   ansible_connection: winrm
+        #   ansible_winrm_transport: ntlm
+        #   ansible_winrm_server_cert_validation: ignore
+        #   ansible_port: 5985
+        
+        # arcgis-win-server2:
+        #   ansible_host: 192.168.1.101
+        #   ansible_user: Administrator
+        #   ansible_password: "{{ windows_admin_password }}"
+        #   ansible_connection: winrm
+        #   ansible_winrm_transport: kerberos
+        #   ansible_port: 5986  # HTTPS WinRM port
+        
+      vars:
+        # Common variables for Windows hosts
+        ansible_connection: winrm
+        ansible_winrm_server_cert_validation: ignore
+        # Use Kerberos for domain-joined machines, NTLM for workgroup
+        ansible_winrm_transport: ntlm
+        ansible_port: 5985

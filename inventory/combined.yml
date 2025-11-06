@@ -1,0 +1,34 @@
+---
+# Combined inventory file for both Windows and Linux servers
+# Edit this file to include all your ArcGIS Enterprise servers
+
+all:
+  children:
+    # Linux servers
+    linux:
+      hosts:
+        # Example Linux server
+        # arcgis-linux-server1:
+        #   ansible_host: 192.168.1.100
+        #   ansible_user: root
+        #   ansible_ssh_private_key_file: ~/.ssh/id_rsa
+        
+      vars:
+        ansible_connection: ssh
+        ansible_port: 22
+        ansible_python_interpreter: /usr/bin/python3
+    
+    # Windows servers
+    windows:
+      hosts:
+        # Example Windows server
+        # arcgis-win-server1:
+        #   ansible_host: 192.168.1.200
+        #   ansible_user: Administrator
+        #   ansible_password: "{{ windows_admin_password }}"
+        
+      vars:
+        ansible_connection: winrm
+        ansible_winrm_server_cert_validation: ignore
+        ansible_winrm_transport: ntlm
+        ansible_port: 5985

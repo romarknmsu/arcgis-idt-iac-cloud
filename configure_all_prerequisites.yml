@@ -1,0 +1,53 @@
+---
+# Combined playbook to configure ArcGIS Enterprise prerequisites on both Windows and Linux
+# Usage: ansible-playbook -i inventory/combined.yml configure_all_prerequisites.yml
+
+- name: Configure ArcGIS Enterprise Prerequisites on Linux Servers
+  hosts: linux
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - role: arcgis_prerequisites_linux
+
+  post_tasks:
+    - name: Display Linux completion message
+      ansible.builtin.debug:
+        msg: "Linux server {{ ansible_hostname }} prerequisites configured successfully!"
+
+- name: Configure ArcGIS Enterprise Prerequisites on Windows Servers
+  hosts: windows
+  gather_facts: yes
+
+  roles:
+    - role: arcgis_prerequisites_windows
+
+  post_tasks:
+    - name: Display Windows completion message
+      ansible.builtin.debug:
+        msg: "Windows server {{ ansible_hostname }} prerequisites configured successfully!"
+
+- name: Display final summary
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Display completion summary
+      ansible.builtin.debug:
+        msg: |
+          ===================================================================
+          ArcGIS Enterprise Prerequisites Configuration Complete!
+          ===================================================================
+          
+          All servers have been configured with the required prerequisites.
+          
+          Next Steps:
+          1. Download ArcGIS Enterprise installation files from My Esri
+          2. Transfer installers to the configured servers
+          3. Install ArcGIS Enterprise components:
+             - ArcGIS Server
+             - Portal for ArcGIS
+             - ArcGIS Data Store
+             - ArcGIS Web Adaptor
+          4. Configure your ArcGIS Enterprise deployment
+          
+          ===================================================================
